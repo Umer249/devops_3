@@ -11,19 +11,44 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Install Dependencies') {
+            steps {
+                sh 'pip install -r devops_assignment/requirements.txt'
+            }
+        }
         stage('Test') {
             steps {
-                sh 'python test_app.py'
+                sh '''
+                    cd devops_assignment
+                    python -m pytest test_app.py -v --junitxml=test-results.xml
+                '''
             }
         }
     }
     post {
         always {
+            junit 'devops_assignment/test-results.xml'
             emailext (
                 subject: "Pipeline '${env.JOB_NAME}' (${env.BUILD_NUMBER}) has completed",
-                body: "Pipeline '${env.JOB_NAME}' (${env.BUILD_NUMBER}) has completed. Check console output at ${env.BUILD_URL}",
-                recipientProviders: [[$class: 'DevelopersRecipientProvider']]
+                body: """
+                    Pipeline '${env.JOB_NAME}' (${env.BUILD_NUMBER}) has completed.
+                    
+                    Build URL: ${env.BUILD_URL}
+                    Test Results: ${env.BUILD_URL}testReport/
+                    
+                    ${currentBuild.description ?: 'No description provided'}
+                    
+                    ${currentBuild.result == 'SUCCESS' ? 'Build was successful!' : 'Build failed!'}
+                """,
+                recipientProviders: [[$class: 'DevelopersRecipientProvider']],
+                attachLog: true
             )
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 } 
