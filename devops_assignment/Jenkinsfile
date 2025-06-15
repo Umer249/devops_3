@@ -1,0 +1,29 @@
+pipeline {
+    agent {
+        docker {
+            image 'markhobson/maven-chrome'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'python test_app.py'
+            }
+        }
+    }
+    post {
+        always {
+            emailext (
+                subject: "Pipeline '${env.JOB_NAME}' (${env.BUILD_NUMBER}) has completed",
+                body: "Pipeline '${env.JOB_NAME}' (${env.BUILD_NUMBER}) has completed. Check console output at ${env.BUILD_URL}",
+                recipientProviders: [[$class: 'DevelopersRecipientProvider']]
+            )
+        }
+    }
+} 
